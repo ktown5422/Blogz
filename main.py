@@ -19,37 +19,50 @@ class Blog(db.Model):
 
 
 
-@app.route('/', methods=['POST', 'GET'])
+@app.route('/')
 def index():
     return redirect('/blog')
 
-@app.route('/blog', methods=['POST'])
+@app.route('/blog')
 def blog():
+    
+    post_id = request.args.get('id')
+    if (post_id):
+        new_post = Blog.query.get(post_id)
+        return render_template('blog.html', new_post=new_post)
+    else:
+        
+        every_blog_posts = Blog.query.all()
+        
+        return render_template('blog.html', posts=every_blog_posts)
 
-    return render_template('blog.html')
 
-@app.route('/newpost', methods=['GET', 'POST'])
+@app.route('/newpost', methods=['POST'])
 def newpost():
-    if request.method == 'POST':
-        blog_title = request.form['blog_title']
-        blog_post = request.form['blog_post']
-        title_error=''
-        new_post_error=''
-        if not blog_title.strip():
-            title_error = 'Please insert title'
-        if not blog_post.strip():
-            new_post_error = 'Pleases insert a blog post'
-        if title_error or new_post_error:
-            return render_template('newpost.html', title_error=title_error, new_post_error=new_post_error)
-        else:
-            new_blog = Blog(blog_title, blog_post)
-            db.session.add(new_blog)
-            db.session.commit()
+    
+    blog_title = request.form['blog_title']
+    blog_post = request.form['blog_post']
+    title_error=''
+    new_post_error=''
 
+    if not blog_title.strip():
+        title_error = 'Please insert title'
+    if not blog_post.strip():
+        new_post_error = 'Pleases insert a blog post'
+    if title_error or new_post_error:
+        return render_template('newpost.html', title_error=title_error, new_post_error=new_post_error)
+    else:
+        new_blog = Blog(blog_title, blog_post)
+        db.session.add(new_blog)
+        db.session.commit()
+   
+    return render_template('newpost.html', blog_title=blog_title, blog_post=blog_post) 
 
-           
+@app.route('/newpost', methods=['GET'])
+def display_addpost():
 
-    return render_template('newpost.html', blog_title=blog_title, blog_post=blog_post)    
+    return render_template('newpost.html') 
+
 
 if __name__ == '__main__':
     app.run()
