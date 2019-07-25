@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template
+from flask import Flask, request, redirect, render_template, session, flash
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -11,11 +11,13 @@ class Blog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120))
-    post = db.Column(db.String(db.text))
+    post = db.Column(db.String(2000))
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    def __init__(self, title, post):
+    def __init__(self, title, post, owner):
         self.title = title
         self.post = post
+        self.owner = owner
         
 
     def validation(self, title, post):
@@ -24,6 +26,18 @@ class Blog(db.Model):
             return True
         else:
             return False
+            
+class User(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(120), unique=True)
+    password = db.Column(db.String(120))
+    blogs = db.relationship('Blog', backref='owner')
+
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+        
 
 
 
@@ -35,14 +49,18 @@ def index():
 def blog():
     
     post_id = request.args.get('id')
+    singleUser_id = request.args.get('owner_id')
     if (post_id):
         new_post = Blog.query.get(post_id)
         return render_template('single_post.html', new_post=new_post)
     else:
+        if (singleUser_id):
+            singleUser_blog_posts = Blog.query.filter_by(owner_id=singleUser_id)
+            return render_template('singleUser.html', posts=singleUser_blog_posts)
+        else:
+            every_blog_posts = Blog.query.all()
         
-        every_blog_posts = Blog.query.all()
-        
-        return render_template('blog.html', posts=every_blog_posts)
+            return render_template('blog.html', posts=every_blog_posts)
 
 
 @app.route('/newpost', methods=['GET', 'POST'])
@@ -50,9 +68,10 @@ def newpost():
     if request.method == 'POST':
         blog_title = request.form['blog_title']
         blog_post = request.form['blog_post']
+        owner = User.query.filter_by(username=session['username']).first()
         title_error=''
         new_post_error=''
-        new_blog = Blog(blog_title, blog_post)
+        new_blog = Blog(blog_title, blog_post, owner)
 
         if new_blog.validation(blog_title, blog_post):
             db.session.add(new_blog)
@@ -67,7 +86,49 @@ def newpost():
             if title_error or new_post_error:
                 return render_template('newpost.html', title_error=title_error, new_post_error=new_post_error)
         
-    return render_template('newpost.html') 
+    return render_template('newpost.html')
+
+@app.route('/signup', methods=['GET', 'POST'])
+def add_user():
+
+    if request.method == 'POST':
+
+        username = request.form['username']
+        password = request.form['password']
+        verify_password = request.form['verify_password']
+        
+
+
+        username_error = ''
+        password_error = ''
+        verify_error = ''
+        
+
+        if len(username) < 3 or len(username) > 20 or " " in username:
+            username_error='check the length of your username'
+
+        if len(password) < 3 or len(password) > 20 or " " in password:
+            password_error ='check the length of your password'
+
+        if password != verify:
+            verify_error='The users password and password-confirmation do not match.'
+
+        if username_error or password_error or verify_error:
+            return render_template('signup.html', username_error=username_error, password_error=password_error, verify_error=verify_error, username=username)
+        else:
+            return render_template('welcome-page.html', username=username)
+
+
+
+
+@app.route('/logout')
+def logout():
+    del session['username']
+    flash('logged Out)
+    return redirect('/blog')
+
+
+
 
 if __name__ == '__main__':
     app.run()
