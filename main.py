@@ -6,6 +6,7 @@ app.config['DEBUG'] = True
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://blogz:password@localhost:8889/blogz'
 app.config['SQLALCHEMY_ECHO'] = True
 db = SQLAlchemy(app) 
+app.secret_key = 'asdfjkl;!@#'
  
 class Blog(db.Model):
 
@@ -37,13 +38,19 @@ class User(db.Model):
     def __init__(self, username, password):
         self.username = username
         self.password = password
-        
 
+@app.before_request
+def require_login():
+    
+    route_list = ['login', 'blog', 'add_user', 'index', 'styles']
+    if request.endpoint not in route_list and 'username' not in session:
+        return redirect('/login')       
 
 
 @app.route('/')
 def index():
-    return redirect('/blog')
+    every_user = User.query.distinct()
+    return render_template('index.html', all_users=every_user)
 
 @app.route('/blog')
 def blog():
@@ -110,21 +117,69 @@ def add_user():
         if len(password) < 3 or len(password) > 20 or " " in password:
             password_error ='check the length of your password'
 
-        if password != verify:
+        if password != verify_password:
             verify_error='The users password and password-confirmation do not match.'
 
         if username_error or password_error or verify_error:
             return render_template('signup.html', username_error=username_error, password_error=password_error, verify_error=verify_error, username=username)
-        else:
-            return render_template('welcome-page.html', username=username)
+        # else:
+        #     return render_template('signup.html', username=username)
 
+
+        user_exist = User.query.filter_by(username=username).first()
+        if not user_exist: 
+        
+            new_user = User(username, password) 
+            db.session.add(new_user)
+            db.session.commit()
+            session['username'] = username
+            flash('New user created', 'success')
+            return redirect('/newpost')
+
+    else:
+        return render_template('signup.html')
+
+
+@app.route('/login', methods=['POST', 'GET'])
+def login():
+    if request.method == 'POST':
+        
+        username = request.form['username']
+        password = request.form['password']
+
+        if not username and not password:
+            flash('Username and password cannot be blank', 'error')
+            return render_template('login.html')
+        if not username:
+            flash('Username cannot be blank', 'error')
+            return render_template('login.html')
+        if not password:
+            flash('Password cannot be blank', 'error')
+            return render_template('login.html')
+        
+    
+        user = User.query.filter_by(username=username).first()
+
+        if not user:
+            flash('Username does not exist', 'error')
+            return render_template('login.html')
+        if user.password != password:
+            flash('Password is incorrect', 'error')
+            return render_template('login.html')
+
+    
+        if user and user.password == password:
+            session['username'] = username
+            return redirect('newpost')
+
+    return render_template('login.html')
 
 
 
 @app.route('/logout')
 def logout():
     del session['username']
-    flash('logged Out)
+    flash('logged Out', 'success')
     return redirect('/blog')
 
 
