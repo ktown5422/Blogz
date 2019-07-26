@@ -182,6 +182,16 @@ def logout():
     flash('logged Out', 'success')
     return redirect('/blog')
 
+# @app.route('/delete-post', methods=['POST'])
+# def delete_post():
+
+#     blog_id = int(request.form['post-id'])
+#     blog = Blog.query.get(blog_id)
+#     blog.completed = True
+#     db.session.add(blog_id)
+#     db.session.commit()
+
+#     return redirect('/login')
 
 
 

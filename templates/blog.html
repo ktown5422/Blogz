@@ -10,6 +10,16 @@
             <p>{{blog.post}}</p>
             <hr>
             {% endfor %}
+            <!-- <ul>
+                {% for blog in posts %}
+                <li>{{blog.title}}
+                    <form method="POST" action="/delete-task" style="display:inline-block;">
+                        <input type="hidden" name="post-id" value="{{blog.id}}" />
+                        <input type="submit" value="delete" />
+                    </form>
+                </li>
+                {% endfor %}
+            </ul> -->
     </div>
     
 
